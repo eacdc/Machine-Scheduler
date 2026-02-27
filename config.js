@@ -1,2 +1,2 @@
 window.ScheduleReorderConfig = window.ScheduleReorderConfig || {};
-window.ScheduleReorderConfig.apiBaseUrl = window.ScheduleReorderConfig.apiBaseUrl || 'http://localhost:3001/api';
+window.ScheduleReorderConfig.apiBaseUrl = window.ScheduleReorderConfig.apiBaseUrl || 'https://cdcapi.onrender.com/api';
