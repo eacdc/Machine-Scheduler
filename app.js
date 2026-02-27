@@ -2,14 +2,55 @@
   const config = window.ScheduleReorderConfig || {};
   const apiBase = (config.apiBaseUrl || '').replace(/\/$/, '');
 
+  // Columns as returned by DB, in order, with display labels. Date/datetime columns are formatted for display.
   var SCHEDULE_COLUMNS = [
-    'ContentName', 'NoOfPages', 'JCQty', 'Forms', 'TotalColors', 'TotalUps', 'OnlineCoating',
-    'PrintingImpressions', 'ProductionQty', 'EndDateTime', 'ETotTime', 'DeliveryDate', 'ExpectedComplDate',
-    'BookedQuantity', 'PickedQuantity', 'IssueQuantity', 'MaterialStatus', 'ExpReceiptDateMaterial',
-    'ItemName', 'CutSize', 'PaperByClient', 'ArtworkStatus', 'PlateOutput', 'LinkofSoftApprovalfile',
-    'ToolingDie', 'ToolingBlock', 'Blanket', 'ProcessName', 'ProcessID', 'SalesOrderNo', 'SalesType',
-    'PlateQty', 'StartDateTime', 'PendingToPick', 'JobType', 'ProcessNames'
+    { key: 'SODate', label: 'SO Date' },
+    { key: 'ScheduleId', label: 'Schedule Id' },
+    { key: 'ClientName', label: 'Client Name' },
+    { key: 'JobCardContentNo', label: 'JC Content No' },
+    { key: 'JobBookingJobcardContentsID', label: 'Contents ID' },
+    { key: 'JobBookingID', label: 'Job Booking ID' },
+    { key: 'JCDate', label: 'JC Date' },
+    { key: 'JobName', label: 'Job Name' },
+    { key: 'ContentName', label: 'Content Name' },
+    { key: 'NoOfPages', label: 'No Of Pages' },
+    { key: 'JCQty', label: 'JC Qty' },
+    { key: 'Forms', label: 'Forms' },
+    { key: 'TotalColors', label: 'Total Colors' },
+    { key: 'TotalUps', label: 'Total Ups' },
+    { key: 'OnlineCoating', label: 'Online Coating' },
+    { key: 'PrintingImpressions', label: 'Printing Impressions' },
+    { key: 'ProductionQty', label: 'Production Qty' },
+    { key: 'EndDateTime', label: 'End Date Time' },
+    { key: 'ETotTime', label: 'E Tot Time' },
+    { key: 'DeliveryDate', label: 'Delivery Date' },
+    { key: 'ExpectedComplDate', label: 'Expected Compl Date' },
+    { key: 'BookedQuantity', label: 'Booked Quantity' },
+    { key: 'PickedQuantity', label: 'Picked Quantity' },
+    { key: 'IssueQuantity', label: 'Issue Quantity' },
+    { key: 'MaterialStatus', label: 'Material Status' },
+    { key: 'ExpReceiptDateMaterial', label: 'Exp Receipt Date Material' },
+    { key: 'ItemName', label: 'Item Name' },
+    { key: 'CutSize', label: 'Cut Size' },
+    { key: 'PaperByClient', label: 'Paper By Client' },
+    { key: 'ArtworkStatus', label: 'Artwork Status' },
+    { key: 'PlateOutput', label: 'Plate Output' },
+    { key: 'LinkofSoftApprovalfile', label: 'Link Of Soft Approval File' },
+    { key: 'ToolingDie', label: 'Tooling Die' },
+    { key: 'ToolingBlock', label: 'Tooling Block' },
+    { key: 'Blanket', label: 'Blanket' },
+    { key: 'ProcessName', label: 'Process Name' },
+    { key: 'ProcessID', label: 'Process ID' },
+    { key: 'SalesOrderNo', label: 'Sales Order No' },
+    { key: 'SalesType', label: 'Sales Type' },
+    { key: 'PlateQty', label: 'Plate Qty' },
+    { key: 'StartDateTime', label: 'Start Date Time' },
+    { key: 'PendingToPick', label: 'Pending To Pick' },
+    { key: 'JobType', label: 'Job Type' },
+    { key: 'ProcessNames', label: 'Process Names' }
   ];
+
+  var DATE_COLUMN_KEYS = { SODate: 1, JCDate: 1, DeliveryDate: 1, ExpectedComplDate: 1, ExpReceiptDateMaterial: 1, EndDateTime: 1, StartDateTime: 1 };
 
   const el = {
     database: document.getElementById('database'),
@@ -23,9 +64,9 @@
     scheduleBody: document.getElementById('scheduleBody'),
     emptyState: document.getElementById('emptyState'),
     selectedCount: document.getElementById('selectedCount'),
+    filterClientName: document.getElementById('filterClientName'),
+    filterJobName: document.getElementById('filterJobName'),
     filterContentName: document.getElementById('filterContentName'),
-    filterProcessName: document.getElementById('filterProcessName'),
-    filterSalesOrderNo: document.getElementById('filterSalesOrderNo'),
     btnUnfilter: document.getElementById('btn-unfilter'),
     unfilterModal: document.getElementById('unfilterModal'),
     modalOk: document.getElementById('modalOk'),
@@ -87,6 +128,24 @@
     return k != null ? row[k] : '';
   }
 
+  function formatDateValue(val) {
+    if (val == null || val === '') return '';
+    var s = String(val).trim();
+    if (!s) return '';
+    var d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      var hasTime = s.indexOf('T') !== -1 || /\d{1,2}:\d{2}/.test(s);
+      return hasTime ? d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) : d.toLocaleDateString(undefined, { dateStyle: 'short' });
+    }
+    return s;
+  }
+
+  function getCellValue(row, key) {
+    var raw = getCell(row, key);
+    if (DATE_COLUMN_KEYS[key] && raw !== '') return formatDateValue(raw);
+    return raw;
+  }
+
   function loadMachines() {
     const db = getDb();
     const url = apiBase + '/schedule/machines?database=' + encodeURIComponent(db);
@@ -108,7 +167,7 @@
   }
 
   function cell(row, key) {
-    return escapeHtml(getCell(row, key));
+    return escapeHtml(String(getCellValue(row, key) ?? ''));
   }
 
   function renderTable(rows) {
@@ -122,6 +181,37 @@
 
     el.scheduleBody.innerHTML = '';
     el.emptyState.classList.add('hidden');
+
+    // Build header and filter rows from column config (always, so headers show even with no data)
+    var table = el.scheduleBody.closest('table');
+    if (table) {
+      var thead = table.querySelector('thead');
+      if (thead) {
+        var headerRow = thead.querySelector('#scheduleHeaderRow') || thead.querySelector('tr:first-child');
+        var filterRow = thead.querySelector('#scheduleFilterRow') || thead.querySelector('tr.filter-row');
+        if (headerRow) {
+          headerRow.innerHTML = '<th class="col-drag"></th><th class="col-checkbox"><input type="checkbox" id="selectAllRows" title="Select all" /></th>' +
+            SCHEDULE_COLUMNS.map(function (col) { return '<th>' + escapeHtml(col.label) + '</th>'; }).join('');
+        }
+        if (filterRow) {
+          var filterCells = [];
+          filterCells.push('<th class="col-drag"></th><th class="col-checkbox"></th>');
+          SCHEDULE_COLUMNS.forEach(function (col) {
+            if (col.key === 'ClientName') filterCells.push('<th><input type="text" id="filterClientName" class="header-filter-input" placeholder="Filter..." /></th>');
+            else if (col.key === 'JobName') filterCells.push('<th><input type="text" id="filterJobName" class="header-filter-input" placeholder="Filter..." /></th>');
+            else if (col.key === 'ContentName') filterCells.push('<th><input type="text" id="filterContentName" class="header-filter-input" placeholder="Filter..." /></th>');
+            else filterCells.push('<th></th>');
+          });
+          filterRow.innerHTML = filterCells.join('');
+        }
+        el.filterClientName = document.getElementById('filterClientName');
+        el.filterJobName = document.getElementById('filterJobName');
+        el.filterContentName = document.getElementById('filterContentName');
+        bindFilterListeners();
+        bindSelectAll();
+      }
+    }
+
     if (scheduleRows.length === 0) {
       el.scheduleBody.classList.add('hidden');
       el.emptyState.classList.remove('hidden');
@@ -133,8 +223,8 @@
       const id = getContentsId(row);
       const tr = document.createElement('tr');
       tr.dataset.contentsId = id;
-      var cellsHtml = SCHEDULE_COLUMNS.map(function (key) {
-        return '<td>' + cell(row, key) + '</td>';
+      var cellsHtml = SCHEDULE_COLUMNS.map(function (col) {
+        return '<td>' + cell(row, col.key) + '</td>';
       }).join('');
       tr.innerHTML =
         '<td class="drag-handle" title="Drag to reorder">⋮⋮</td>' +
@@ -180,6 +270,28 @@
     const div = document.createElement('div');
     div.textContent = t;
     return div.innerHTML;
+  }
+
+  function bindFilterListeners() {
+    [el.filterClientName, el.filterJobName, el.filterContentName].forEach(function (input) {
+      if (!input) return;
+      input.addEventListener('input', applyFilter);
+      input.addEventListener('change', applyFilter);
+    });
+  }
+
+  function bindSelectAll() {
+    var selectAllCb = document.getElementById('selectAllRows');
+    if (!selectAllCb) return;
+    selectAllCb.addEventListener('change', function () {
+      var trs = el.scheduleBody.querySelectorAll('tr[data-contents-id]');
+      if (selectAllCb.checked) {
+        trs.forEach(function (tr) { selectedIds.add(tr.dataset.contentsId); });
+      } else {
+        selectedIds.clear();
+      }
+      updateSelectionVisuals();
+    });
   }
 
   function formatDateTime(val) {
@@ -390,18 +502,18 @@
     return Array.prototype.map.call(trs, function (tr) { return parseInt(tr.dataset.contentsId, 10); });
   }
 
-  /* ---- Column filter: Client Name (2), JC Content No (5), Job Name (6) ---- */
+  /* ---- Column filter: ClientName (cell 4), JobName (cell 9), ContentName (cell 10) ---- */
 
   function getFilterValues() {
-    var c = (el.filterContentName && el.filterContentName.value) ? el.filterContentName.value.trim().toLowerCase() : '';
-    var p = (el.filterProcessName && el.filterProcessName.value) ? el.filterProcessName.value.trim().toLowerCase() : '';
-    var s = (el.filterSalesOrderNo && el.filterSalesOrderNo.value) ? el.filterSalesOrderNo.value.trim().toLowerCase() : '';
-    return { contentName: c, processName: p, salesOrderNo: s };
+    var client = (el.filterClientName && el.filterClientName.value) ? el.filterClientName.value.trim().toLowerCase() : '';
+    var jobName = (el.filterJobName && el.filterJobName.value) ? el.filterJobName.value.trim().toLowerCase() : '';
+    var content = (el.filterContentName && el.filterContentName.value) ? el.filterContentName.value.trim().toLowerCase() : '';
+    return { clientName: client, jobName: jobName, contentName: content };
   }
 
   function hasActiveFilter() {
     var f = getFilterValues();
-    return f.contentName !== '' || f.processName !== '' || f.salesOrderNo !== '';
+    return f.clientName !== '' || f.jobName !== '' || f.contentName !== '';
   }
 
   function applyFilter() {
@@ -409,13 +521,13 @@
     var trs = el.scheduleBody ? el.scheduleBody.querySelectorAll('tr[data-contents-id]') : [];
     trs.forEach(function (tr) {
       var cells = tr.querySelectorAll('td');
-      var contentName = (cells[2] && cells[2].textContent) ? cells[2].textContent.trim().toLowerCase() : '';
-      var processName = (cells[29] && cells[29].textContent) ? cells[29].textContent.trim().toLowerCase() : '';
-      var salesOrderNo = (cells[31] && cells[31].textContent) ? cells[31].textContent.trim().toLowerCase() : '';
+      var clientName = (cells[4] && cells[4].textContent) ? cells[4].textContent.trim().toLowerCase() : '';
+      var jobName = (cells[9] && cells[9].textContent) ? cells[9].textContent.trim().toLowerCase() : '';
+      var contentName = (cells[10] && cells[10].textContent) ? cells[10].textContent.trim().toLowerCase() : '';
       var show = true;
-      if (f.contentName && contentName.indexOf(f.contentName) === -1) show = false;
-      if (show && f.processName && processName.indexOf(f.processName) === -1) show = false;
-      if (show && f.salesOrderNo && salesOrderNo.indexOf(f.salesOrderNo) === -1) show = false;
+      if (f.clientName && clientName.indexOf(f.clientName) === -1) show = false;
+      if (show && f.jobName && jobName.indexOf(f.jobName) === -1) show = false;
+      if (show && f.contentName && contentName.indexOf(f.contentName) === -1) show = false;
       tr.style.display = show ? '' : 'none';
     });
     updateUnfilterButtonVisibility();
@@ -434,9 +546,9 @@
   }
 
   function clearFilters() {
+    if (el.filterClientName) el.filterClientName.value = '';
+    if (el.filterJobName) el.filterJobName.value = '';
     if (el.filterContentName) el.filterContentName.value = '';
-    if (el.filterProcessName) el.filterProcessName.value = '';
-    if (el.filterSalesOrderNo) el.filterSalesOrderNo.value = '';
     applyFilter();
   }
 
@@ -499,6 +611,15 @@
       .then(function (data) {
         var rows = Array.isArray(data) ? data : (data && data.data) ? data.data : [];
         if (!Array.isArray(rows)) rows = [];
+
+        // --- DEBUG: log first 3 rows from API response ---
+        console.log('[frontend] total rows from API:', rows.length);
+        rows.slice(0, 3).forEach(function (row, i) {
+          console.log('[frontend] row[' + i + '] keys:', Object.keys(row));
+          console.log('[frontend] row[' + i + '] data:', JSON.stringify(row));
+        });
+        // --- END DEBUG ---
+
         el.scheduleSection.classList.remove('hidden');
         el.scheduleTitle.textContent = 'Schedule (drag rows to reorder)';
         renderTable(rows);
@@ -707,17 +828,17 @@
   el.btnSearch.addEventListener('click', doSearch);
   el.btnSave.addEventListener('click', doSave);
 
+  if (el.filterClientName) {
+    el.filterClientName.addEventListener('input', applyFilter);
+    el.filterClientName.addEventListener('change', applyFilter);
+  }
+  if (el.filterJobName) {
+    el.filterJobName.addEventListener('input', applyFilter);
+    el.filterJobName.addEventListener('change', applyFilter);
+  }
   if (el.filterContentName) {
     el.filterContentName.addEventListener('input', applyFilter);
     el.filterContentName.addEventListener('change', applyFilter);
-  }
-  if (el.filterProcessName) {
-    el.filterProcessName.addEventListener('input', applyFilter);
-    el.filterProcessName.addEventListener('change', applyFilter);
-  }
-  if (el.filterSalesOrderNo) {
-    el.filterSalesOrderNo.addEventListener('input', applyFilter);
-    el.filterSalesOrderNo.addEventListener('change', applyFilter);
   }
   if (el.btnUnfilter) {
     el.btnUnfilter.addEventListener('click', clearFilters);

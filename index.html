@@ -47,56 +47,8 @@
         <div class="schedule-table-wrap">
           <table class="schedule-table">
             <thead>
-              <tr>
-                <th class="col-drag"></th>
-                <th class="col-checkbox"><input type="checkbox" id="selectAllRows" title="Select all" /></th>
-                <th>Content Name</th>
-                <th>No Of Pages</th>
-                <th>JC Qty</th>
-                <th>Forms</th>
-                <th>Total Colors</th>
-                <th>Total Ups</th>
-                <th>Online Coating</th>
-                <th>Printing Impressions</th>
-                <th>Production Qty</th>
-                <th>End Date Time</th>
-                <th>E Tot Time</th>
-                <th>Delivery Date</th>
-                <th>Expected Compl Date</th>
-                <th>Booked Quantity</th>
-                <th>Picked Quantity</th>
-                <th>Issue Quantity</th>
-                <th>Material Status</th>
-                <th>Exp Receipt Date Material</th>
-                <th>Item Name</th>
-                <th>Cut Size</th>
-                <th>Paper By Client</th>
-                <th>Artwork Status</th>
-                <th>Plate Output</th>
-                <th>Link of Soft Approval File</th>
-                <th>Tooling Die</th>
-                <th>Tooling Block</th>
-                <th>Blanket</th>
-                <th>Process Name</th>
-                <th>Process ID</th>
-                <th>Sales Order No</th>
-                <th>Sales Type</th>
-                <th>Plate Qty</th>
-                <th>Start Date Time</th>
-                <th>Pending To Pick</th>
-                <th>Job Type</th>
-                <th>Process Names</th>
-              </tr>
-              <tr class="filter-row">
-                <th class="col-drag"></th>
-                <th class="col-checkbox"></th>
-                <th><input type="text" id="filterContentName" class="header-filter-input" placeholder="Filter..." /></th>
-                <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
-                <th><input type="text" id="filterProcessName" class="header-filter-input" placeholder="Filter..." /></th>
-                <th></th>
-                <th><input type="text" id="filterSalesOrderNo" class="header-filter-input" placeholder="Filter..." /></th>
-                <th></th><th></th><th></th><th></th><th></th><th></th>
-              </tr>
+              <tr id="scheduleHeaderRow"></tr>
+              <tr id="scheduleFilterRow" class="filter-row"></tr>
             </thead>
             <tbody id="scheduleBody"></tbody>
           </table>
