@@ -717,6 +717,9 @@
     if (el.changeMachineForm) el.changeMachineForm.classList.remove('hidden');
     if (el.changeMachineLoading) el.changeMachineLoading.classList.add('hidden');
 
+    // Ensure Move button state is correct when opening (fixes it staying disabled after a previous successful move)
+    if (el.changeMachineMoveBtn) el.changeMachineMoveBtn.disabled = !el.changeMachineTarget.value;
+
     el.changeMachineModal.setAttribute('aria-hidden', 'false');
     el.changeMachineModal.classList.remove('hidden');
   }
@@ -811,6 +814,13 @@
 
   if (el.changeMachineCancelBtn) {
     el.changeMachineCancelBtn.addEventListener('click', closeChangeMachineModal);
+  }
+
+  // Enable/disable Move button when target machine selection changes
+  if (el.changeMachineTarget && el.changeMachineMoveBtn) {
+    el.changeMachineTarget.addEventListener('change', function () {
+      el.changeMachineMoveBtn.disabled = !el.changeMachineTarget.value;
+    });
   }
 
   if (el.changeMachineModal) {
