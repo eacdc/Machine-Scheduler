@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Schedule Reorder</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <h1>Schedule Reorder</h1>
+    </header>
+
+    <main class="app-main">
+      <div class="header-container">
+        <section class="card header-card">
+          <div class="header-controls-row">
+            <div class="form-row">
+              <label for="database">Database</label>
+              <select id="database">
+                <option value="KOL">KOL</option>
+                <option value="AHM">AHM</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label for="machine">Machine</label>
+              <select id="machine">
+                <option value="">Select machine</option>
+              </select>
+            </div>
+            <div class="form-row form-row-button">
+              <label>&nbsp;</label>
+              <button type="button" id="btn-search" class="btn-primary">Search</button>
+            </div>
+          </div>
+        </section>
+        <div id="statusMessage" class="status-message hidden"></div>
+      </div>
+
+      <section id="scheduleSection" class="card hidden">
+        <div class="schedule-section-header">
+          <h2 id="scheduleTitle">Schedule <span class="multiselect-hint">— Click to select, Ctrl+Click to add, Shift+Click to range-select. Drag any selected row to move the group.</span><span id="selectedCount" class="selected-count hidden"></span></h2>
+          <button type="button" id="btn-unfilter" class="btn-unfilter hidden" title="Clear all filters">Unfilter</button>
+        </div>
+        <div class="schedule-table-wrap">
+          <table class="schedule-table">
+            <thead>
+              <tr>
+                <th class="col-drag"></th>
+                <th class="col-checkbox"><input type="checkbox" id="selectAllRows" title="Select all" /></th>
+                <th>Content Name</th>
+                <th>No Of Pages</th>
+                <th>JC Qty</th>
+                <th>Forms</th>
+                <th>Total Colors</th>
+                <th>Total Ups</th>
+                <th>Online Coating</th>
+                <th>Printing Impressions</th>
+                <th>Production Qty</th>
+                <th>End Date Time</th>
+                <th>E Tot Time</th>
+                <th>Delivery Date</th>
+                <th>Expected Compl Date</th>
+                <th>Booked Quantity</th>
+                <th>Picked Quantity</th>
+                <th>Issue Quantity</th>
+                <th>Material Status</th>
+                <th>Exp Receipt Date Material</th>
+                <th>Item Name</th>
+                <th>Cut Size</th>
+                <th>Paper By Client</th>
+                <th>Artwork Status</th>
+                <th>Plate Output</th>
+                <th>Link of Soft Approval File</th>
+                <th>Tooling Die</th>
+                <th>Tooling Block</th>
+                <th>Blanket</th>
+                <th>Process Name</th>
+                <th>Process ID</th>
+                <th>Sales Order No</th>
+                <th>Sales Type</th>
+                <th>Plate Qty</th>
+                <th>Start Date Time</th>
+                <th>Pending To Pick</th>
+                <th>Job Type</th>
+                <th>Process Names</th>
+              </tr>
+              <tr class="filter-row">
+                <th class="col-drag"></th>
+                <th class="col-checkbox"></th>
+                <th><input type="text" id="filterContentName" class="header-filter-input" placeholder="Filter..." /></th>
+                <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+                <th><input type="text" id="filterProcessName" class="header-filter-input" placeholder="Filter..." /></th>
+                <th></th>
+                <th><input type="text" id="filterSalesOrderNo" class="header-filter-input" placeholder="Filter..." /></th>
+                <th></th><th></th><th></th><th></th><th></th><th></th>
+              </tr>
+            </thead>
+            <tbody id="scheduleBody"></tbody>
+          </table>
+        </div>
+        <div id="emptyState" class="empty-state hidden">No schedule data for this machine.</div>
+        <div id="saveActions" class="save-bar hidden">
+          <button type="button" id="btn-save" class="btn-success">Save order</button>
+          <button type="button" id="btn-change-machine" class="btn-secondary hidden" disabled>Change machine</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="unfilterModal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-box">
+      <p class="modal-message">Unfilter first to save changes.</p>
+      <button type="button" id="modalOk" class="btn-primary">OK</button>
+    </div>
+  </div>
+
+  <div id="changeMachineModal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal-box">
+      <div id="changeMachineForm">
+        <p class="modal-message">Move <span id="changeMachineCount"></span> selected job(s) to:</p>
+        <div class="modal-field">
+          <label for="changeMachineTarget">Target Machine</label>
+          <select id="changeMachineTarget">
+            <option value="">Select machine...</option>
+          </select>
+        </div>
+        <div id="changeMachineError" class="status-message error hidden"></div>
+        <div class="modal-actions">
+          <button type="button" id="changeMachineMoveBtn" class="btn-primary">Move</button>
+          <button type="button" id="changeMachineCancelBtn" class="btn-secondary">Cancel</button>
+        </div>
+      </div>
+      <div id="changeMachineLoading" class="change-machine-loading hidden">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p id="changeMachineLoadingMessage" class="change-machine-loading-message">Changing machine for the selected job(s)...</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
