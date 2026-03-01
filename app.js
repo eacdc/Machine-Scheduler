@@ -67,6 +67,7 @@
     filterClientName: document.getElementById('filterClientName'),
     filterJobName: document.getElementById('filterJobName'),
     filterContentName: document.getElementById('filterContentName'),
+    filterJcContentNo: document.getElementById('filterJcContentNo'),
     btnUnfilter: document.getElementById('btn-unfilter'),
     unfilterModal: document.getElementById('unfilterModal'),
     modalOk: document.getElementById('modalOk'),
@@ -198,6 +199,7 @@
           filterCells.push('<th class="col-drag"></th><th class="col-checkbox"></th>');
           SCHEDULE_COLUMNS.forEach(function (col) {
             if (col.key === 'ClientName') filterCells.push('<th><input type="text" id="filterClientName" class="header-filter-input" placeholder="Filter..." /></th>');
+            else if (col.key === 'JobCardContentNo') filterCells.push('<th><input type="text" id="filterJcContentNo" class="header-filter-input" placeholder="Filter..." /></th>');
             else if (col.key === 'JobName') filterCells.push('<th><input type="text" id="filterJobName" class="header-filter-input" placeholder="Filter..." /></th>');
             else if (col.key === 'ContentName') filterCells.push('<th><input type="text" id="filterContentName" class="header-filter-input" placeholder="Filter..." /></th>');
             else filterCells.push('<th></th>');
@@ -207,6 +209,7 @@
         el.filterClientName = document.getElementById('filterClientName');
         el.filterJobName = document.getElementById('filterJobName');
         el.filterContentName = document.getElementById('filterContentName');
+        el.filterJcContentNo = document.getElementById('filterJcContentNo');
         bindFilterListeners();
         bindSelectAll();
       }
@@ -273,7 +276,7 @@
   }
 
   function bindFilterListeners() {
-    [el.filterClientName, el.filterJobName, el.filterContentName].forEach(function (input) {
+    [el.filterClientName, el.filterJobName, el.filterContentName, el.filterJcContentNo].forEach(function (input) {
       if (!input) return;
       input.addEventListener('input', applyFilter);
       input.addEventListener('change', applyFilter);
@@ -502,18 +505,19 @@
     return Array.prototype.map.call(trs, function (tr) { return parseInt(tr.dataset.contentsId, 10); });
   }
 
-  /* ---- Column filter: ClientName (cell 4), JobName (cell 9), ContentName (cell 10) ---- */
+  /* ---- Column filter: ClientName (cell 4), JobCardContentNo (cell 5), JobName (cell 9), ContentName (cell 10) ---- */
 
   function getFilterValues() {
     var client = (el.filterClientName && el.filterClientName.value) ? el.filterClientName.value.trim().toLowerCase() : '';
+    var jcContentNo = (el.filterJcContentNo && el.filterJcContentNo.value) ? el.filterJcContentNo.value.trim().toLowerCase() : '';
     var jobName = (el.filterJobName && el.filterJobName.value) ? el.filterJobName.value.trim().toLowerCase() : '';
     var content = (el.filterContentName && el.filterContentName.value) ? el.filterContentName.value.trim().toLowerCase() : '';
-    return { clientName: client, jobName: jobName, contentName: content };
+    return { clientName: client, jcContentNo: jcContentNo, jobName: jobName, contentName: content };
   }
 
   function hasActiveFilter() {
     var f = getFilterValues();
-    return f.clientName !== '' || f.jobName !== '' || f.contentName !== '';
+    return f.clientName !== '' || f.jcContentNo !== '' || f.jobName !== '' || f.contentName !== '';
   }
 
   function applyFilter() {
@@ -522,10 +526,12 @@
     trs.forEach(function (tr) {
       var cells = tr.querySelectorAll('td');
       var clientName = (cells[4] && cells[4].textContent) ? cells[4].textContent.trim().toLowerCase() : '';
+      var jcContentNo = (cells[5] && cells[5].textContent) ? cells[5].textContent.trim().toLowerCase() : '';
       var jobName = (cells[9] && cells[9].textContent) ? cells[9].textContent.trim().toLowerCase() : '';
       var contentName = (cells[10] && cells[10].textContent) ? cells[10].textContent.trim().toLowerCase() : '';
       var show = true;
       if (f.clientName && clientName.indexOf(f.clientName) === -1) show = false;
+      if (show && f.jcContentNo && jcContentNo.indexOf(f.jcContentNo) === -1) show = false;
       if (show && f.jobName && jobName.indexOf(f.jobName) === -1) show = false;
       if (show && f.contentName && contentName.indexOf(f.contentName) === -1) show = false;
       tr.style.display = show ? '' : 'none';
@@ -549,6 +555,7 @@
     if (el.filterClientName) el.filterClientName.value = '';
     if (el.filterJobName) el.filterJobName.value = '';
     if (el.filterContentName) el.filterContentName.value = '';
+    if (el.filterJcContentNo) el.filterJcContentNo.value = '';
     applyFilter();
   }
 
@@ -849,6 +856,10 @@
   if (el.filterContentName) {
     el.filterContentName.addEventListener('input', applyFilter);
     el.filterContentName.addEventListener('change', applyFilter);
+  }
+  if (el.filterJcContentNo) {
+    el.filterJcContentNo.addEventListener('input', applyFilter);
+    el.filterJcContentNo.addEventListener('change', applyFilter);
   }
   if (el.btnUnfilter) {
     el.btnUnfilter.addEventListener('click', clearFilters);
