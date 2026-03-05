@@ -270,6 +270,31 @@ input:focus, select:focus {
 
 .schedule-section-header h2 {
   margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.schedule-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.btn-export-excel {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.875rem;
+  background: var(--primary);
+  color: #fff;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-export-excel:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
 }
 
 .btn-unfilter {

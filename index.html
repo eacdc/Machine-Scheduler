@@ -42,7 +42,10 @@
       <section id="scheduleSection" class="card hidden">
         <div class="schedule-section-header">
           <h2 id="scheduleTitle">Schedule <span class="multiselect-hint">— Click to select, Ctrl+Click to add, Shift+Click to range-select. Drag any selected row to move the group.</span><span id="selectedCount" class="selected-count hidden"></span></h2>
-          <button type="button" id="btn-unfilter" class="btn-unfilter hidden" title="Clear all filters">Unfilter</button>
+          <div class="schedule-header-actions">
+            <button type="button" id="btn-export-excel" class="btn-export-excel" title="Export table to Excel">Export to Excel</button>
+            <button type="button" id="btn-unfilter" class="btn-unfilter hidden" title="Clear all filters">Unfilter</button>
+          </div>
         </div>
         <div class="schedule-table-wrap">
           <table class="schedule-table">

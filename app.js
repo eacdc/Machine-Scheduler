@@ -2,8 +2,10 @@
   const config = window.ScheduleReorderConfig || {};
   const apiBase = (config.apiBaseUrl || '').replace(/\/$/, '');
 
-  // Columns as returned by DB, in order, with display labels. Date/datetime columns are formatted for display.
+  // Columns as returned by DB, in order, with display labels. Sales Order No and Sales Type first. Date/datetime columns are formatted for display.
   var SCHEDULE_COLUMNS = [
+    { key: 'SalesOrderNo', label: 'Sales Order No' },
+    { key: 'SalesType', label: 'Sales Type' },
     { key: 'SODate', label: 'SO Date' },
     { key: 'ScheduleId', label: 'Schedule Id' },
     { key: 'ClientName', label: 'Client Name' },
@@ -41,8 +43,6 @@
     { key: 'Blanket', label: 'Blanket' },
     { key: 'ProcessName', label: 'Process Name' },
     { key: 'ProcessID', label: 'Process ID' },
-    { key: 'SalesOrderNo', label: 'Sales Order No' },
-    { key: 'SalesType', label: 'Sales Type' },
     { key: 'PlateQty', label: 'Plate Qty' },
     { key: 'StartDateTime', label: 'Start Date Time' },
     { key: 'PendingToPick', label: 'Pending To Pick' },
@@ -68,6 +68,7 @@
     filterJobName: document.getElementById('filterJobName'),
     filterContentName: document.getElementById('filterContentName'),
     filterJcContentNo: document.getElementById('filterJcContentNo'),
+    btnExportExcel: document.getElementById('btn-export-excel'),
     btnUnfilter: document.getElementById('btn-unfilter'),
     unfilterModal: document.getElementById('unfilterModal'),
     modalOk: document.getElementById('modalOk'),
@@ -505,7 +506,7 @@
     return Array.prototype.map.call(trs, function (tr) { return parseInt(tr.dataset.contentsId, 10); });
   }
 
-  /* ---- Column filter: ClientName (cell 4), JobCardContentNo (cell 5), JobName (cell 9), ContentName (cell 10) ---- */
+  /* ---- Column filter: ClientName (cell 6), JobCardContentNo (cell 7), JobName (cell 11), ContentName (cell 12) ---- */
 
   function getFilterValues() {
     var client = (el.filterClientName && el.filterClientName.value) ? el.filterClientName.value.trim().toLowerCase() : '';
@@ -525,10 +526,10 @@
     var trs = el.scheduleBody ? el.scheduleBody.querySelectorAll('tr[data-contents-id]') : [];
     trs.forEach(function (tr) {
       var cells = tr.querySelectorAll('td');
-      var clientName = (cells[4] && cells[4].textContent) ? cells[4].textContent.trim().toLowerCase() : '';
-      var jcContentNo = (cells[5] && cells[5].textContent) ? cells[5].textContent.trim().toLowerCase() : '';
-      var jobName = (cells[9] && cells[9].textContent) ? cells[9].textContent.trim().toLowerCase() : '';
-      var contentName = (cells[10] && cells[10].textContent) ? cells[10].textContent.trim().toLowerCase() : '';
+      var clientName = (cells[6] && cells[6].textContent) ? cells[6].textContent.trim().toLowerCase() : '';
+      var jcContentNo = (cells[7] && cells[7].textContent) ? cells[7].textContent.trim().toLowerCase() : '';
+      var jobName = (cells[11] && cells[11].textContent) ? cells[11].textContent.trim().toLowerCase() : '';
+      var contentName = (cells[12] && cells[12].textContent) ? cells[12].textContent.trim().toLowerCase() : '';
       var show = true;
       if (f.clientName && clientName.indexOf(f.clientName) === -1) show = false;
       if (show && f.jcContentNo && jcContentNo.indexOf(f.jcContentNo) === -1) show = false;
@@ -557,6 +558,46 @@
     if (el.filterContentName) el.filterContentName.value = '';
     if (el.filterJcContentNo) el.filterJcContentNo.value = '';
     applyFilter();
+  }
+
+  function escapeCsvCell(val) {
+    var s = String(val == null ? '' : val);
+    if (s.indexOf('"') !== -1 || s.indexOf(',') !== -1 || s.indexOf('\n') !== -1 || s.indexOf('\r') !== -1) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  }
+
+  function exportToExcel() {
+    var trs = el.scheduleBody ? el.scheduleBody.querySelectorAll('tr[data-contents-id]') : [];
+    var visible = [];
+    for (var i = 0; i < trs.length; i++) {
+      if (trs[i].style.display !== 'none') visible.push(trs[i]);
+    }
+    if (visible.length === 0) {
+      showStatus('No rows to export.', 'info');
+      return;
+    }
+    var headers = SCHEDULE_COLUMNS.map(function (col) { return escapeCsvCell(col.label); });
+    var rows = [headers.join(',')];
+    visible.forEach(function (tr) {
+      var cells = tr.querySelectorAll('td');
+      var dataStart = 2;
+      var vals = [];
+      for (var c = dataStart; c < cells.length; c++) {
+        vals.push(escapeCsvCell((cells[c] && cells[c].textContent) ? cells[c].textContent.trim() : ''));
+      }
+      rows.push(vals.join(','));
+    });
+    var csv = '\uFEFF' + rows.join('\r\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'schedule-export.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    showStatus('Exported ' + visible.length + ' row(s) to schedule-export.csv', 'info');
   }
 
   function updateSaveVisibility() {
@@ -844,6 +885,9 @@
 
   el.btnSearch.addEventListener('click', doSearch);
   el.btnSave.addEventListener('click', doSave);
+  if (el.btnExportExcel) {
+    el.btnExportExcel.addEventListener('click', exportToExcel);
+  }
 
   if (el.filterClientName) {
     el.filterClientName.addEventListener('input', applyFilter);
