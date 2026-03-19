@@ -281,6 +281,37 @@ input:focus, select:focus {
   flex-shrink: 0;
 }
 
+.schedule-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.35);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.schedule-totals.hidden {
+  display: none !important;
+}
+
+.schedule-totals .totals-item {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: baseline;
+}
+
+.schedule-totals .totals-label {
+  color: var(--text-muted);
+}
+
+.schedule-totals .totals-value {
+  font-weight: 700;
+}
+
 .btn-export-excel {
   padding: 0.4rem 0.9rem;
   font-size: 0.875rem;
@@ -465,6 +496,14 @@ input:focus, select:focus {
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--card);
+}
+
+/* View-only mode (non offset machines): hide reorder/selection columns */
+#scheduleSection.view-only th.col-drag,
+#scheduleSection.view-only td.drag-handle,
+#scheduleSection.view-only th.col-checkbox,
+#scheduleSection.view-only td.col-checkbox {
+  display: none !important;
 }
 
 /* Save bar below the table */

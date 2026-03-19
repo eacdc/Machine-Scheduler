@@ -61,6 +61,7 @@
     saveActions: document.getElementById('saveActions'),
     scheduleSection: document.getElementById('scheduleSection'),
     scheduleTitle: document.getElementById('scheduleTitle'),
+    scheduleTotals: document.getElementById('scheduleTotals'),
     scheduleBody: document.getElementById('scheduleBody'),
     emptyState: document.getElementById('emptyState'),
     selectedCount: document.getElementById('selectedCount'),
@@ -89,6 +90,46 @@
   let sortable = null;
   let statusTimer = null;
   let machinesList = [];
+  let isEditableMachine = true;
+
+  const EDITABLE_MACHINE_TYPES = {
+    'sheetfed offset': 1,
+    'web offset': 1,
+  };
+
+  function normalizeMachineType(s) {
+    return String(s == null ? '' : s).trim().toLowerCase();
+  }
+
+  function getSelectedMachineMeta() {
+    const machineId = getMachineId();
+    if (machineId == null) return null;
+    return machinesList.find(function (m) { return parseInt(m.machineId, 10) === machineId; }) || null;
+  }
+
+  function getSelectedMachineType() {
+    // Read directly from the selected <option> data attribute — most reliable approach.
+    var sel = el.machine;
+    if (!sel || sel.selectedIndex < 0) return '';
+    var opt = sel.options[sel.selectedIndex];
+    return (opt && opt.dataset && opt.dataset.machineType) ? opt.dataset.machineType : '';
+  }
+
+  function setEditableModeForSelectedMachine() {
+    var type = normalizeMachineType(getSelectedMachineType());
+    isEditableMachine = !!EDITABLE_MACHINE_TYPES[type];
+
+    if (el.scheduleSection) {
+      if (isEditableMachine) el.scheduleSection.classList.remove('view-only');
+      else el.scheduleSection.classList.add('view-only');
+    }
+
+    // If we previously had sortable enabled, ensure it is destroyed in view-only mode.
+    if (!isEditableMachine && sortable && typeof sortable.destroy === 'function') {
+      sortable.destroy();
+      sortable = null;
+    }
+  }
 
   // Multi-select state
   let selectedIds = new Set();   // set of contentsId strings
@@ -163,6 +204,11 @@
           const opt = document.createElement('option');
           opt.value = m.machineId;
           opt.textContent = m.machineName || ('Machine ' + m.machineId);
+          opt.dataset.machineType = m.machineType || '';
+          console.log('option', opt);
+          console.log('option value', opt.value);
+          console.log('option textContent', opt.textContent);
+          console.log('option dataset machineType', opt.dataset.machineType);
           el.machine.appendChild(opt);
         });
       });
@@ -266,6 +312,7 @@
     initSortable();
     updateSaveVisibility();
     clearFilters();
+    updateTotals();
   }
 
   function escapeHtml(s) {
@@ -418,6 +465,7 @@
       sortable.destroy();
       sortable = null;
     }
+    if (!isEditableMachine) return;
     if (!el.scheduleBody || scheduleRows.length === 0) return;
 
     sortable = new Sortable(el.scheduleBody, {
@@ -538,6 +586,7 @@
       tr.style.display = show ? '' : 'none';
     });
     updateUnfilterButtonVisibility();
+    updateTotals();
   }
 
   function updateUnfilterButtonVisibility() {
@@ -558,6 +607,63 @@
     if (el.filterContentName) el.filterContentName.value = '';
     if (el.filterJcContentNo) el.filterJcContentNo.value = '';
     applyFilter();
+  }
+
+  function getDataCellIndexForColumnKey(key) {
+    var idx = SCHEDULE_COLUMNS.findIndex(function (c) { return c.key === key; });
+    if (idx < 0) return -1;
+    // first two td cells are drag handle + checkbox
+    return 2 + idx;
+  }
+
+  function parseNumber(val) {
+    if (val == null) return 0;
+    var s = String(val).trim();
+    if (!s) return 0;
+    s = s.replace(/,/g, '');
+    var n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function formatNumber(n) {
+    if (n == null || isNaN(n)) return '0';
+    return Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+
+  function updateTotals() {
+    if (!el.scheduleTotals) return;
+    var idxPI = getDataCellIndexForColumnKey('PrintingImpressions');
+    var idxPQ = getDataCellIndexForColumnKey('ProductionQty');
+    if (idxPI < 0 || idxPQ < 0) {
+      el.scheduleTotals.classList.add('hidden');
+      el.scheduleTotals.textContent = '';
+      return;
+    }
+
+    var trs = el.scheduleBody ? el.scheduleBody.querySelectorAll('tr[data-contents-id]') : [];
+    var totalPI = 0;
+    var totalPQ = 0;
+    var visibleCount = 0;
+    trs.forEach(function (tr) {
+      if (tr.style.display === 'none') return;
+      var cells = tr.querySelectorAll('td');
+      totalPI += parseNumber(cells[idxPI] ? cells[idxPI].textContent : '');
+      totalPQ += parseNumber(cells[idxPQ] ? cells[idxPQ].textContent : '');
+      visibleCount += 1;
+    });
+
+    if (visibleCount === 0) {
+      el.scheduleTotals.classList.add('hidden');
+      el.scheduleTotals.textContent = '';
+      return;
+    }
+
+    var pending = totalPI - totalPQ;
+    el.scheduleTotals.classList.remove('hidden');
+    el.scheduleTotals.innerHTML =
+      '<span class="totals-item"><span class="totals-label">Total Printing Impressions:</span> <span class="totals-value">' + escapeHtml(formatNumber(totalPI)) + '</span></span>' +
+      '<span class="totals-item"><span class="totals-label">Total Production Qty:</span> <span class="totals-value">' + escapeHtml(formatNumber(totalPQ)) + '</span></span>' +
+      '<span class="totals-item"><span class="totals-label">Total Pending Qty (PI − PQ):</span> <span class="totals-value">' + escapeHtml(formatNumber(pending)) + '</span></span>';
   }
 
   function escapeCsvCell(val) {
@@ -601,6 +707,13 @@
   }
 
   function updateSaveVisibility() {
+    if (!isEditableMachine) {
+      // View-only mode: hide all edit actions.
+      if (el.btnSave) el.btnSave.classList.add('hidden');
+      if (el.btnChangeMachine) el.btnChangeMachine.classList.add('hidden');
+      if (el.saveActions) el.saveActions.classList.add('hidden');
+      return;
+    }
     const current = getCurrentOrder();
     const orderChanged = current.length > 0 && !(
       current.length === initialOrder.length &&
@@ -639,6 +752,7 @@
       showStatus('Please select a machine.', 'error');
       return Promise.reject();
     }
+    setEditableModeForSelectedMachine();
     hideStatus();
     el.btnSearch.disabled = true;
     el.scheduleSection.classList.add('loading');
@@ -669,7 +783,9 @@
         // --- END DEBUG ---
 
         el.scheduleSection.classList.remove('hidden');
-        el.scheduleTitle.textContent = 'Schedule (drag rows to reorder)';
+        el.scheduleTitle.textContent = isEditableMachine
+          ? 'Schedule (drag rows to reorder)'
+          : 'Schedule (view only)';
         renderTable(rows);
         el.scheduleSection.classList.remove('loading');
         if (scheduleRows.length === 0) {
@@ -692,6 +808,7 @@
   }
 
   function doSave() {
+    if (!isEditableMachine) return;
     if (hasActiveFilter()) {
       if (el.unfilterModal) el.unfilterModal.classList.remove('hidden');
       return;
@@ -738,12 +855,16 @@
   /* ---- Change Machine modal ---- */
 
   function openChangeMachineModal() {
+    if (!isEditableMachine) return;
     var currentMachineId = getMachineId();
     if (currentMachineId == null) return;
 
     // Populate target machine dropdown (exclude current machine)
     el.changeMachineTarget.innerHTML = '<option value="">Select machine...</option>';
     machinesList.forEach(function (m) {
+      // Only allow switching into Offset machines.
+      var t = normalizeMachineType(m.machineType || m.MachineType || '');
+      if (!EDITABLE_MACHINE_TYPES[t]) return;
       if (m.machineId === currentMachineId) return;
       var opt = document.createElement('option');
       opt.value = m.machineId;
