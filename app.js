@@ -10,8 +10,6 @@
     { key: 'ScheduleId', label: 'Schedule Id' },
     { key: 'ClientName', label: 'Client Name' },
     { key: 'JobCardContentNo', label: 'JC Content No' },
-    { key: 'JobBookingJobcardContentsID', label: 'Contents ID' },
-    { key: 'JobBookingID', label: 'Job Booking ID' },
     { key: 'JCDate', label: 'JC Date' },
     { key: 'JobName', label: 'Job Name' },
     { key: 'ContentName', label: 'Content Name' },
@@ -554,7 +552,7 @@
     return Array.prototype.map.call(trs, function (tr) { return parseInt(tr.dataset.contentsId, 10); });
   }
 
-  /* ---- Column filter: ClientName (cell 6), JobCardContentNo (cell 7), JobName (cell 11), ContentName (cell 12) ---- */
+  /* ---- Column filter: ClientName (cell 4), JobCardContentNo (cell 5), JobName (cell 9), ContentName (cell 10) ---- */
 
   function getFilterValues() {
     var client = (el.filterClientName && el.filterClientName.value) ? el.filterClientName.value.trim().toLowerCase() : '';
@@ -574,10 +572,10 @@
     var trs = el.scheduleBody ? el.scheduleBody.querySelectorAll('tr[data-contents-id]') : [];
     trs.forEach(function (tr) {
       var cells = tr.querySelectorAll('td');
-      var clientName = (cells[6] && cells[6].textContent) ? cells[6].textContent.trim().toLowerCase() : '';
-      var jcContentNo = (cells[7] && cells[7].textContent) ? cells[7].textContent.trim().toLowerCase() : '';
-      var jobName = (cells[11] && cells[11].textContent) ? cells[11].textContent.trim().toLowerCase() : '';
-      var contentName = (cells[12] && cells[12].textContent) ? cells[12].textContent.trim().toLowerCase() : '';
+      var clientName = (cells[4] && cells[4].textContent) ? cells[4].textContent.trim().toLowerCase() : '';
+      var jcContentNo = (cells[5] && cells[5].textContent) ? cells[5].textContent.trim().toLowerCase() : '';
+      var jobName = (cells[9] && cells[9].textContent) ? cells[9].textContent.trim().toLowerCase() : '';
+      var contentName = (cells[10] && cells[10].textContent) ? cells[10].textContent.trim().toLowerCase() : '';
       var show = true;
       if (f.clientName && clientName.indexOf(f.clientName) === -1) show = false;
       if (show && f.jcContentNo && jcContentNo.indexOf(f.jcContentNo) === -1) show = false;
