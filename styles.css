@@ -101,6 +101,12 @@ body {
   white-space: nowrap;
 }
 
+.header-controls-row .form-row-button .header-search-actions {
+  display: inline-flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .card {
   background: var(--card);
   border: 1px solid var(--border);

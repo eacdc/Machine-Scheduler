@@ -54,6 +54,7 @@
     database: document.getElementById('database'),
     machine: document.getElementById('machine'),
     btnSearch: document.getElementById('btn-search'),
+    btnRefresh: document.getElementById('btn-refresh'),
     btnSave: document.getElementById('btn-save'),
     statusMessage: document.getElementById('statusMessage'),
     saveActions: document.getElementById('saveActions'),
@@ -809,6 +810,40 @@
       });
   }
 
+  function doRefresh() {
+    const db = getDb();
+    const url = apiBase + '/schedule/refresh';
+    el.btnRefresh.disabled = true;
+    showStatus('Refreshing schedule...', 'info', false);
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ database: db }),
+    })
+      .then(function (r) {
+        return r.json().then(function (body) {
+          if (!r.ok) {
+            var msg = (body && body.error) ? body.error : (r.statusText || 'Failed to refresh schedule');
+            throw new Error(msg);
+          }
+          return body;
+        });
+      })
+      .then(function () {
+        showStatus('Schedule refreshed successfully.', 'success');
+        // If machine is selected, reload table with latest data.
+        if (getMachineId() != null) {
+          return doSearch();
+        }
+      })
+      .catch(function (err) {
+        showStatus(err.message || 'Failed to refresh schedule', 'error', false);
+      })
+      .finally(function () {
+        el.btnRefresh.disabled = false;
+      });
+  }
+
   function doSave() {
     if (!isEditableMachine) return;
     if (hasActiveFilter()) {
@@ -1007,6 +1042,7 @@
   });
 
   el.btnSearch.addEventListener('click', doSearch);
+  if (el.btnRefresh) el.btnRefresh.addEventListener('click', doRefresh);
   el.btnSave.addEventListener('click', doSave);
   if (el.btnExportExcel) {
     el.btnExportExcel.addEventListener('click', exportToExcel);
