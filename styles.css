@@ -386,6 +386,26 @@ input:focus, select:focus {
   border-color: var(--primary);
 }
 
+/* Min/max and date range: stacked inputs in filter row */
+.schedule-table .filter-row .header-filter-cell--number,
+.schedule-table .filter-row .header-filter-cell--date {
+  white-space: normal;
+  min-width: 7rem;
+  max-width: 11rem;
+}
+
+.schedule-table .filter-row .header-filter-cell--number .header-filter-num,
+.schedule-table .filter-row .header-filter-cell--date .header-filter-date {
+  display: block;
+  width: 100%;
+  margin-top: 0.2rem;
+}
+
+.schedule-table .filter-row .header-filter-cell--number .header-filter-num:first-child,
+.schedule-table .filter-row .header-filter-cell--date .header-filter-date:first-child {
+  margin-top: 0;
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;

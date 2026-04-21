@@ -50,6 +50,100 @@
 
   var DATE_COLUMN_KEYS = { SODate: 1, JCDate: 1, DeliveryDate: 1, ExpectedComplDate: 1, ExpReceiptDateMaterial: 1, EndDateTime: 1, StartDateTime: 1 };
 
+  /** Numeric columns: min/max filters use raw cell values (not formatted display). */
+  var NUMERIC_COLUMN_KEYS = {
+    ScheduleId: 1,
+    NoOfPages: 1,
+    JCQty: 1,
+    Forms: 1,
+    TotalColors: 1,
+    TotalUps: 1,
+    PrintingImpressions: 1,
+    ProductionQty: 1,
+    BookedQuantity: 1,
+    PickedQuantity: 1,
+    IssueQuantity: 1,
+    PlateQty: 1,
+    ProcessID: 1,
+    PendingToPick: 1,
+  };
+
+  function getColumnFilterType(key) {
+    if (DATE_COLUMN_KEYS[key]) return 'date';
+    if (NUMERIC_COLUMN_KEYS[key]) return 'number';
+    return 'text';
+  }
+
+  function escapeAttr(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+
+  function parseRowDateFromRaw(raw) {
+    if (raw == null || raw === '') return null;
+    var d = new Date(raw);
+    if (isNaN(d.getTime())) return null;
+    return d;
+  }
+
+  /** Bounds from date or datetime-local inputs; inclusive range. */
+  function boundsFromDateInputs(fromVal, toVal, isDateTime) {
+    var fromBound = null;
+    var toBound = null;
+    if (fromVal && String(fromVal).trim() !== '') {
+      if (isDateTime) {
+        fromBound = new Date(fromVal);
+      } else {
+        fromBound = new Date(fromVal + 'T00:00:00');
+      }
+      if (isNaN(fromBound.getTime())) fromBound = null;
+    }
+    if (toVal && String(toVal).trim() !== '') {
+      if (isDateTime) {
+        toBound = new Date(toVal);
+      } else {
+        toBound = new Date(toVal + 'T23:59:59.999');
+      }
+      if (isNaN(toBound.getTime())) toBound = null;
+    }
+    return { from: fromBound, to: toBound };
+  }
+
+  function buildFilterCellHtml(col) {
+    var k = col.key;
+    var t = getColumnFilterType(k);
+    if (t === 'text') {
+      return '<th><input type="text" class="header-filter-input" data-filter-key="' + escapeAttr(k) + '" data-filter-kind="text" placeholder="Contains…" autocomplete="off" /></th>';
+    }
+    if (t === 'number') {
+      return (
+        '<th class="header-filter-cell header-filter-cell--number">' +
+        '<input type="text" class="header-filter-input header-filter-num" data-filter-key="' +
+        escapeAttr(k) +
+        '" data-filter-kind="number" data-filter-role="min" placeholder="Min" inputmode="decimal" autocomplete="off" />' +
+        '<input type="text" class="header-filter-input header-filter-num" data-filter-key="' +
+        escapeAttr(k) +
+        '" data-filter-kind="number" data-filter-role="max" placeholder="Max" inputmode="decimal" autocomplete="off" />' +
+        '</th>'
+      );
+    }
+    var isDateTime = k.indexOf('DateTime') !== -1;
+    var inputType = isDateTime ? 'datetime-local' : 'date';
+    return (
+      '<th class="header-filter-cell header-filter-cell--date">' +
+      '<input type="' +
+      inputType +
+      '" class="header-filter-input header-filter-date" data-filter-key="' +
+      escapeAttr(k) +
+      '" data-filter-kind="date" data-filter-role="from" title="From" />' +
+      '<input type="' +
+      inputType +
+      '" class="header-filter-input header-filter-date" data-filter-key="' +
+      escapeAttr(k) +
+      '" data-filter-kind="date" data-filter-role="to" title="To" />' +
+      '</th>'
+    );
+  }
+
   const el = {
     database: document.getElementById('database'),
     machine: document.getElementById('machine'),
@@ -64,10 +158,6 @@
     scheduleBody: document.getElementById('scheduleBody'),
     emptyState: document.getElementById('emptyState'),
     selectedCount: document.getElementById('selectedCount'),
-    filterClientName: document.getElementById('filterClientName'),
-    filterJobName: document.getElementById('filterJobName'),
-    filterContentName: document.getElementById('filterContentName'),
-    filterJcContentNo: document.getElementById('filterJcContentNo'),
     btnExportExcel: document.getElementById('btn-export-excel'),
     btnUnfilter: document.getElementById('btn-unfilter'),
     unfilterModal: document.getElementById('unfilterModal'),
@@ -241,21 +331,13 @@
             SCHEDULE_COLUMNS.map(function (col) { return '<th>' + escapeHtml(col.label) + '</th>'; }).join('');
         }
         if (filterRow) {
-          var filterCells = [];
-          filterCells.push('<th class="col-drag"></th><th class="col-checkbox"></th>');
-          SCHEDULE_COLUMNS.forEach(function (col) {
-            if (col.key === 'ClientName') filterCells.push('<th><input type="text" id="filterClientName" class="header-filter-input" placeholder="Filter..." /></th>');
-            else if (col.key === 'JobCardContentNo') filterCells.push('<th><input type="text" id="filterJcContentNo" class="header-filter-input" placeholder="Filter..." /></th>');
-            else if (col.key === 'JobName') filterCells.push('<th><input type="text" id="filterJobName" class="header-filter-input" placeholder="Filter..." /></th>');
-            else if (col.key === 'ContentName') filterCells.push('<th><input type="text" id="filterContentName" class="header-filter-input" placeholder="Filter..." /></th>');
-            else filterCells.push('<th></th>');
-          });
+          var filterCells = ['<th class="col-drag"></th><th class="col-checkbox"></th>'].concat(
+            SCHEDULE_COLUMNS.map(function (col) {
+              return buildFilterCellHtml(col);
+            })
+          );
           filterRow.innerHTML = filterCells.join('');
         }
-        el.filterClientName = document.getElementById('filterClientName');
-        el.filterJobName = document.getElementById('filterJobName');
-        el.filterContentName = document.getElementById('filterContentName');
-        el.filterJcContentNo = document.getElementById('filterJcContentNo');
         bindFilterListeners();
         bindSelectAll();
       }
@@ -322,12 +404,25 @@
     return div.innerHTML;
   }
 
+  var filterInputHandlerBound = null;
+
+  function onFilterInputEvent(e) {
+    var t = e.target;
+    if (!t || !t.classList || !t.classList.contains('header-filter-input')) return;
+    applyFilter();
+  }
+
   function bindFilterListeners() {
-    [el.filterClientName, el.filterJobName, el.filterContentName, el.filterJcContentNo].forEach(function (input) {
-      if (!input) return;
-      input.addEventListener('input', applyFilter);
-      input.addEventListener('change', applyFilter);
-    });
+    var table = el.scheduleBody && el.scheduleBody.closest('table');
+    var thead = table ? table.querySelector('thead') : null;
+    if (!thead) return;
+    if (filterInputHandlerBound) {
+      thead.removeEventListener('input', filterInputHandlerBound);
+      thead.removeEventListener('change', filterInputHandlerBound);
+    }
+    filterInputHandlerBound = onFilterInputEvent;
+    thead.addEventListener('input', filterInputHandlerBound);
+    thead.addEventListener('change', filterInputHandlerBound);
   }
 
   function bindSelectAll() {
@@ -553,40 +648,95 @@
     return Array.prototype.map.call(trs, function (tr) { return parseInt(tr.dataset.contentsId, 10); });
   }
 
-  /* ---- Column filter: dynamic cell index by column key ---- */
+  /* ---- Column filter: every column; text contains, number min/max, date from/to (raw values for date/number) ---- */
 
-  function getFilterValues() {
-    var client = (el.filterClientName && el.filterClientName.value) ? el.filterClientName.value.trim().toLowerCase() : '';
-    var jcContentNo = (el.filterJcContentNo && el.filterJcContentNo.value) ? el.filterJcContentNo.value.trim().toLowerCase() : '';
-    var jobName = (el.filterJobName && el.filterJobName.value) ? el.filterJobName.value.trim().toLowerCase() : '';
-    var content = (el.filterContentName && el.filterContentName.value) ? el.filterContentName.value.trim().toLowerCase() : '';
-    return { clientName: client, jcContentNo: jcContentNo, jobName: jobName, contentName: content };
+  function getFilterInputsRoot() {
+    var table = el.scheduleBody && el.scheduleBody.closest('table');
+    return table ? table.querySelector('#scheduleFilterRow') : null;
   }
 
   function hasActiveFilter() {
-    var f = getFilterValues();
-    return f.clientName !== '' || f.jcContentNo !== '' || f.jobName !== '' || f.contentName !== '';
+    var row = getFilterInputsRoot();
+    if (!row) return false;
+    var inputs = row.querySelectorAll('.header-filter-input');
+    for (var i = 0; i < inputs.length; i++) {
+      var v = inputs[i].value;
+      if (v != null && String(v).trim() !== '') return true;
+    }
+    return false;
+  }
+
+  function rowPassesColumnFilters(row) {
+    var filterRow = getFilterInputsRoot();
+    if (!filterRow) return true;
+
+    for (var i = 0; i < SCHEDULE_COLUMNS.length; i++) {
+      var col = SCHEDULE_COLUMNS[i];
+      var key = col.key;
+      var kind = getColumnFilterType(key);
+
+      if (kind === 'text') {
+        var textInp = filterRow.querySelector(
+          '.header-filter-input[data-filter-key="' + key + '"][data-filter-kind="text"]'
+        );
+        var needle = textInp && textInp.value ? textInp.value.trim().toLowerCase() : '';
+        if (!needle) continue;
+        var hay = String(getCellValue(row, key) ?? '').toLowerCase();
+        if (hay.indexOf(needle) === -1) return false;
+        continue;
+      }
+
+      if (kind === 'number') {
+        var minInp = filterRow.querySelector('[data-filter-key="' + key + '"][data-filter-role="min"]');
+        var maxInp = filterRow.querySelector('[data-filter-key="' + key + '"][data-filter-role="max"]');
+        var minStr = minInp && minInp.value != null ? String(minInp.value).trim() : '';
+        var maxStr = maxInp && maxInp.value != null ? String(maxInp.value).trim() : '';
+        if (!minStr && !maxStr) continue;
+        var val = parseNumber(getCell(row, key));
+        if (minStr !== '') {
+          var lo = parseFloat(minStr.replace(/,/g, ''));
+          if (!isNaN(lo) && val < lo) return false;
+        }
+        if (maxStr !== '') {
+          var hi = parseFloat(maxStr.replace(/,/g, ''));
+          if (!isNaN(hi) && val > hi) return false;
+        }
+        continue;
+      }
+
+      /* date */
+      var isDateTime = key.indexOf('DateTime') !== -1;
+      var fromInp = filterRow.querySelector(
+        '[data-filter-key="' + key + '"][data-filter-kind="date"][data-filter-role="from"]'
+      );
+      var toInp = filterRow.querySelector(
+        '[data-filter-key="' + key + '"][data-filter-kind="date"][data-filter-role="to"]'
+      );
+      var fromVal = fromInp && fromInp.value ? fromInp.value.trim() : '';
+      var toVal = toInp && toInp.value ? toInp.value.trim() : '';
+      if (!fromVal && !toVal) continue;
+      var bounds = boundsFromDateInputs(fromVal, toVal, isDateTime);
+      var raw = getCell(row, key);
+      var d = parseRowDateFromRaw(raw);
+      if (d == null) return false;
+      if (bounds.from != null && d < bounds.from) return false;
+      if (bounds.to != null && d > bounds.to) return false;
+    }
+    return true;
   }
 
   function applyFilter() {
-    var f = getFilterValues();
-    var idxClientName = getDataCellIndexForColumnKey('ClientName');
-    var idxJcContentNo = getDataCellIndexForColumnKey('JobCardContentNo');
-    var idxJobName = getDataCellIndexForColumnKey('JobName');
-    var idxContentName = getDataCellIndexForColumnKey('ContentName');
     var trs = el.scheduleBody ? el.scheduleBody.querySelectorAll('tr[data-contents-id]') : [];
     trs.forEach(function (tr) {
-      var cells = tr.querySelectorAll('td');
-      var clientName = (cells[idxClientName] && cells[idxClientName].textContent) ? cells[idxClientName].textContent.trim().toLowerCase() : '';
-      var jcContentNo = (cells[idxJcContentNo] && cells[idxJcContentNo].textContent) ? cells[idxJcContentNo].textContent.trim().toLowerCase() : '';
-      var jobName = (cells[idxJobName] && cells[idxJobName].textContent) ? cells[idxJobName].textContent.trim().toLowerCase() : '';
-      var contentName = (cells[idxContentName] && cells[idxContentName].textContent) ? cells[idxContentName].textContent.trim().toLowerCase() : '';
-      var show = true;
-      if (f.clientName && clientName.indexOf(f.clientName) === -1) show = false;
-      if (show && f.jcContentNo && jcContentNo.indexOf(f.jcContentNo) === -1) show = false;
-      if (show && f.jobName && jobName.indexOf(f.jobName) === -1) show = false;
-      if (show && f.contentName && contentName.indexOf(f.contentName) === -1) show = false;
-      tr.style.display = show ? '' : 'none';
+      var id = tr.dataset.contentsId;
+      var dataRow = scheduleRows.find(function (r) {
+        return String(getContentsId(r)) === String(id);
+      });
+      if (!dataRow) {
+        tr.style.display = 'none';
+        return;
+      }
+      tr.style.display = rowPassesColumnFilters(dataRow) ? '' : 'none';
     });
     updateUnfilterButtonVisibility();
     updateTotals();
@@ -605,10 +755,12 @@
   }
 
   function clearFilters() {
-    if (el.filterClientName) el.filterClientName.value = '';
-    if (el.filterJobName) el.filterJobName.value = '';
-    if (el.filterContentName) el.filterContentName.value = '';
-    if (el.filterJcContentNo) el.filterJcContentNo.value = '';
+    var row = getFilterInputsRoot();
+    if (row) {
+      row.querySelectorAll('.header-filter-input').forEach(function (inp) {
+        inp.value = '';
+      });
+    }
     applyFilter();
   }
 
@@ -1048,22 +1200,6 @@
     el.btnExportExcel.addEventListener('click', exportToExcel);
   }
 
-  if (el.filterClientName) {
-    el.filterClientName.addEventListener('input', applyFilter);
-    el.filterClientName.addEventListener('change', applyFilter);
-  }
-  if (el.filterJobName) {
-    el.filterJobName.addEventListener('input', applyFilter);
-    el.filterJobName.addEventListener('change', applyFilter);
-  }
-  if (el.filterContentName) {
-    el.filterContentName.addEventListener('input', applyFilter);
-    el.filterContentName.addEventListener('change', applyFilter);
-  }
-  if (el.filterJcContentNo) {
-    el.filterJcContentNo.addEventListener('input', applyFilter);
-    el.filterJcContentNo.addEventListener('change', applyFilter);
-  }
   if (el.btnUnfilter) {
     el.btnUnfilter.addEventListener('click', clearFilters);
   }
